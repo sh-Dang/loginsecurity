@@ -12,12 +12,6 @@ public class LoginController {
     @GetMapping("/loginform")
     public String test() {
         log.debug("컨트롤러에 접근이 됐습니다.");
-        return "/loginform";
-    }
-
-    @GetMapping("/main")
-    public String main() {
-        log.debug("로그인에 성공해서 메인페이지로 들어갑니다.");
-        return "redirect:/main.html";
+        return "/loginform.html";
     }
 }

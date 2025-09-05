@@ -3,8 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 </head>
 <body>
-    <h2>메인페이지 입니다.</h2>
+    <h2>시큐리티 고생했습니다 입니다!!!</h2>
+    <form action="/logout" method="POST">
+        <input type="button" value="로그아웃">
+    </form>
+<script>
+    function logout() {
+        location.href = "/logout";
+    }
+    $(()=>{
+        $("input[type='button']").click(()=>{
+            logout();
+        });
+    });
+</script>
 </body>
 </html>

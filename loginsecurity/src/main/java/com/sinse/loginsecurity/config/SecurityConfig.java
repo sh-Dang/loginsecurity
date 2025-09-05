@@ -4,7 +4,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Spring Security 설정을 담당하는 구성 클래스입니다.
@@ -21,6 +23,12 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+
     /**
      * Spring Security 필터 체인을 설정하는 메서드입니다.
      *
@@ -34,11 +42,11 @@ public class SecurityConfig {
      * @throws Exception 보안 설정 중 예외 발생 가능
      */
     @Bean
-    SecurityWebFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf ->csrf.disable())
                     .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login/*").permitAll()
+                        .requestMatchers("/loginform.html", "/css/loginform.css", "/loginform").permitAll()
                         .anyRequest().authenticated()
                     )
                 .formLogin(form -> form
@@ -46,10 +54,17 @@ public class SecurityConfig {
                     .loginProcessingUrl("/login")
                     .usernameParameter("username")
                     .passwordParameter("password")
-                    .defaultSuccessUrl("/main", true)
+                    .defaultSuccessUrl("/main.html", true)
                     .permitAll()
-        );
+                )
+                .logout(logout->logout //로그아웃 설정 시작
+                        .logoutUrl("/logout") //로그아웃 url
+                        .logoutSuccessUrl("/loginform.html") //로그아웃 시 접속할 url
+                        .invalidateHttpSession(true) //현재 세션 무효화
+                        .deleteCookies("JSESSIONID") //JSESSIONID 쿠키 삭제
+                );
+        ;
 
-        return null;
+        return http.build();
     }
 }
