@@ -46,19 +46,19 @@ public class SecurityConfig {
         http
                 .csrf(csrf ->csrf.disable())
                     .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/loginform.html", "/css/loginform.css", "/loginform").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/loginform.html", "/css/loginform.css", "/loginform").permitAll() // 전체적으로(로그인 하지 않아도 되는 요청)
+                        .anyRequest().authenticated() // 위에서 허용한 URL 이외의 모든 요청은 인증(로그인) 필요
                     )
                 .formLogin(form -> form
-                    .loginPage("/loginform")
-                    .loginProcessingUrl("/login")
-                    .usernameParameter("username")
-                    .passwordParameter("password")
+                    .loginPage("/loginform") //로그인 폼 설정
+                    .loginProcessingUrl("/login") //로그인 url ///default로 접근이 허용
+                    .usernameParameter("username") // 로그인 폼에서 "username"이라는 name 속성을 가진 input 값을 아이디로 사용
+                    .passwordParameter("password") // 로그인 폼에서 "password"라는 name 속성을 가진 input 값을 비밀번호로 사용
                     .defaultSuccessUrl("/main.html", true)
                     .permitAll()
                 )
                 .logout(logout->logout //로그아웃 설정 시작
-                        .logoutUrl("/logout") //로그아웃 url
+                        .logoutUrl("/logout") //로그아웃 url ///default로 접근이 허용
                         .logoutSuccessUrl("/loginform.html") //로그아웃 시 접속할 url
                         .invalidateHttpSession(true) //현재 세션 무효화
                         .deleteCookies("JSESSIONID") //JSESSIONID 쿠키 삭제
