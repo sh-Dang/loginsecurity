@@ -17,5 +17,7 @@ public class User {
     @Column(nullable = false)
     private String password;
     private int age;
-    private String role;
+    @ManyToOne
+    @JoinColumn(name="role_id")
+    private Role role;
 }

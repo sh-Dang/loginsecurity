@@ -20,7 +20,6 @@ create table USER(
     , age int not null default 20
 );
 
-
 -- 1. 기존의 'id' 컬럼을 'username'으로 이름 및 속성 변경
 ALTER TABLE user
 CHANGE COLUMN id username VARCHAR(255) NOT NULL UNIQUE;
@@ -29,3 +28,10 @@ CHANGE COLUMN id username VARCHAR(255) NOT NULL UNIQUE;
 ALTER TABLE user
 ADD COLUMN role VARCHAR(255) NOT NULL;
 
+CREATE TABLE ROLE(
+    role_id int primary key auto_increment
+    , role_name varchar(20) NOT NULL
+);
+
+insert into ROLE(role_name)
+values('USER'), ('STORE'), ('ADMIN');

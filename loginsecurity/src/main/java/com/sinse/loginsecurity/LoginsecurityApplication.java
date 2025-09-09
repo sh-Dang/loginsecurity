@@ -23,7 +23,6 @@ public class LoginsecurityApplication {
                 String password = passwordEncoder.encode("1234");
                 user.setUsername("what");
                 user.setPassword(password);
-                user.setRole("ROLE_USER");
 
                 jpaUserRepository.save(user);
             }
