@@ -27,3 +27,6 @@ My first session login/logout project is done, please help me to convert to JWT 
 **End-of-Project Review & Deliverables:**
 - Provide a direct and honest review of the user's security knowledge level, including disappointing feedback if necessary.
 - Create a summary file documenting the project's development process.
+
+**Project Direction:**
+- add direction to the user signIn logic based on completed project with JWT login/logout
