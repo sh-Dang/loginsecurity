@@ -95,8 +95,8 @@ public class UserController {
         user.setUsername(userDTO.getUsername());
         user.setPassword(encodedPassword); // 암호화된 비밀번호 설정
         //TODO:user 나이, Role 입력받는 로직 구현하기
-        user.setAge(25);
-        user.setRole(role); // 예시: 기본 ROLE_USER 부여
+        user.setAge(user.getAge());
+        user.setRole(user.getRole()); // 예시: 기본 ROLE_USER 부여
 
         // 4. DB에 User 저장
         jpaUserRepository.save(user);
