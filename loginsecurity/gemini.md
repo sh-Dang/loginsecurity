@@ -30,3 +30,4 @@ My first session login/logout project is done, please help me to convert to JWT 
 
 **Project Direction:**
 - add direction to the user signIn logic based on completed project with JWT login/logout
+- Implement JWT Access and Refresh tokens using Redis for storage and management.

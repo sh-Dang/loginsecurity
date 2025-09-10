@@ -7,6 +7,7 @@ import com.sinse.loginsecurity.dto.UserDTO;
 import com.sinse.loginsecurity.repository.JpaRoleRepository;
 import com.sinse.loginsecurity.util.JwtUtil;
 import com.sinse.loginsecurity.util.LogCounter;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -82,21 +83,23 @@ public class UserController {
     }
 
     @PostMapping("/register")
+    @Transactional
     public ResponseEntity<String> register(@RequestBody UserDTO userDTO) {
         log.debug("13. 회원가입 요청 들어옴======");
         // 1. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(userDTO.getPassword());
-        // 2. 기본 Role값 설정
-        Role role = jpaRoleRepository.findByRoleName("USER");
+
+        // 2. Role 존재 여부 확인 및 예외 처리
+        Role role = jpaRoleRepository.findByRoleName(userDTO.getRole())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 역할입니다."));
         log.debug("14. USER값을 가진 role 객체는?" + role.toString());
 
         // 3. User 객체 생성 및 데이터 설정
         User user = new User();
         user.setUsername(userDTO.getUsername());
         user.setPassword(encodedPassword); // 암호화된 비밀번호 설정
-        //TODO:user 나이, Role 입력받는 로직 구현하기
-        user.setAge(user.getAge());
-        user.setRole(user.getRole()); // 예시: 기본 ROLE_USER 부여
+        user.setAge(userDTO.getAge()); // DTO에서 age 꺼내옴
+        user.setRole(role); // 조회된 Role 설정
 
         // 4. DB에 User 저장
         jpaUserRepository.save(user);
