@@ -50,7 +50,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // "/login", "/register", "/" 경로는 인증 없이 모든 사용자가 접근할 수 있도록 허용합니다.
                         // 로그인과 회원가입 기능은 인증되지 않은 사용자도 이용할 수 있어야 합니다.
-                        .requestMatchers("/login", "/register", "/", "/loginform.html", "/css/*").permitAll()
+                        .requestMatchers("/login", "/register", "/", "/registerform.html", "/loginform.html", "/css/*").permitAll()
                         // 위에서 허용한 경로를 제외한 모든 나머지 요청은 반드시 인증을 거쳐야 합니다.
                         .anyRequest().authenticated()
                 )

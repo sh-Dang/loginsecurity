@@ -1,18 +1,24 @@
 package com.sinse.loginsecurity.controller;
 
 import com.sinse.loginsecurity.config.CustomUserDetails;
+import com.sinse.loginsecurity.domain.Role;
+import com.sinse.loginsecurity.domain.User;
 import com.sinse.loginsecurity.dto.UserDTO;
+import com.sinse.loginsecurity.repository.JpaRoleRepository;
 import com.sinse.loginsecurity.util.JwtUtil;
 import com.sinse.loginsecurity.util.LogCounter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import com.sinse.loginsecurity.repository.JpaUserRepository;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -25,13 +31,21 @@ public class UserController {
     private final LogCounter logCounter;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
+    private final JpaUserRepository jpaUserRepository;
+    private final JpaRoleRepository jpaRoleRepository;
 
+    /**
+     * login 로직을 구현한 메서드
+     * UserDTO의 멤버변수와 html단에서 JSON으로 매핑된 key값이 일치하도록 매핑해 주어야 함
+     * 아니라면 @JsonProperty 사용필요
+     * +)현재 넘어오는 JSON객체 양식
+     * body: JSON.stringify({ username: username, password: password }
+     * 
+     * @return Map을 반환.
+     * @author 이세형
+     * */
     @PostMapping("/login")
-        /*UserDTO의 멤버변수와 html단에서 JSON으로 매핑된 key값이 일치하도록 매핑해 주어야 함
-            아니라면 @JsonProperty 사용필요
-          현재 넘어오는 JSON객체 양식
-          body: JSON.stringify({ username: username, password: password }
-            */
     public Map<String, String> login(@RequestBody UserDTO userDTO) {
         log.debug("현재까지 찍혀야 하는 log의 마지막 번호는"+logCounter.getCount());
         log.debug("1. 들어와서 userDTO에 저장된 정보의 정체는 " + userDTO.toString());
@@ -65,5 +79,29 @@ public class UserController {
         log.debug("7. 로그인 정보를 사용(JwtUtil객체를 통해)해 만든 token 문자열은 == "+token+"\n이 토큰을 client에게 반환합니다.");
         // 5. 생성된 토큰을 "token"이라는 키와 함께 JSON 형태로 클라이언트에게 반환합니다.
         return Map.of("token", token);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestBody UserDTO userDTO) {
+        log.debug("13. 회원가입 요청 들어옴======");
+        // 1. 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(userDTO.getPassword());
+        // 2. 기본 Role값 설정
+        Role role = jpaRoleRepository.findByRoleName("USER");
+        log.debug("14. USER값을 가진 role 객체는?" + role.toString());
+
+        // 3. User 객체 생성 및 데이터 설정
+        User user = new User();
+        user.setUsername(userDTO.getUsername());
+        user.setPassword(encodedPassword); // 암호화된 비밀번호 설정
+        //TODO:user 나이, Role 입력받는 로직 구현하기
+        user.setAge(25);
+        user.setRole(role); // 예시: 기본 ROLE_USER 부여
+
+        // 4. DB에 User 저장
+        jpaUserRepository.save(user);
+
+        // 5. 성공 응답 반환
+        return ResponseEntity.ok("회원가입이 성공적으로 완료되었습니다.");
     }
 }

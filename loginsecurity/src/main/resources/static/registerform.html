@@ -10,7 +10,7 @@
 
 <div class="register-container">
     <h2>회원가입</h2>
-    <form action="/register" method="post">
+    <form action="/register" method="post" id="registerForm">
         <div class="input-group">
             <label for="username">사용자 이름:</label>
             <input type="text" id="username" name="username" required>
@@ -22,5 +22,35 @@
         <button type="submit">회원가입</button>
     </form>
 </div>
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const registerResponse = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password })
+            });
+
+            if (registerResponse.ok) {
+                const result = await registerResponse.text(); // 백엔드에서 String 반환
+                alert('회원가입이 성공적으로 완료되었습니다: ' + result);
+                window.location.href = '/loginform.html'; // 성공 시 로그인 페이지로 이동
+            } else {
+                const errorText = await registerResponse.text(); // 에러 메시지 받기
+                alert('회원가입 실패: ' + errorText);
+                console.error('회원가입 실패:', registerResponse.status, errorText);
+            }
+        } catch (error) {
+            alert('네트워크 오류 또는 서버 응답 문제: ' + error.message);
+            console.error('Fetch 오류:', error);
+        }
+    });
+</script>
+
 </body>
 </html>
