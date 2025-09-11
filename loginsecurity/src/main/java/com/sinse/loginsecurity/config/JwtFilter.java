@@ -53,8 +53,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // 6. username으로 UserDetails 객체(사용자 정보)를 조회합니다.
         UserDetails userDetails = jpaUserDetailsService.loadUserByUsername(username);
-
         log.debug("16. userDetails를 DB에서 잘 꺼내왔습니다. 이 로그는 한번만 출력되어야 합니다.");
+
         // 7. Spring Security가 이해할 수 있는 인증 토큰(Authentication)을 생성합니다.
         UsernamePasswordAuthenticationToken authToken = new
                 UsernamePasswordAuthenticationToken(

@@ -7,18 +7,18 @@
 </head>
 <body>
     <h2>시큐리티 메인</h2>
-    <form action="/logout" method="POST">
-        <input type="button" value="로그아웃">
+
+    <button id="getInfoBtn">내 정보 가져오기</button>
+    <pre id="result"></pre>
+
+    <hr>
+
+    <form id="logoutForm">
+        <button type="submit">로그아웃</button>
     </form>
+
 <script>
-    function logout() {
-        location.href = "/logout";
-    }
-    $(()=>{
-        $("input[type='button']").click(()=>{
-            logout();
-        });
-    });
+    //TODO: 메인에서 토큰이 필요한 API호출 메서드를 재구현 해야함.
 </script>
 </body>
 </html>
