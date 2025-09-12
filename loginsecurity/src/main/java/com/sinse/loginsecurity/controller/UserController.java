@@ -43,7 +43,7 @@ public class UserController {
     private final PasswordEncoder passwordEncoder;
     private final JpaUserRepository jpaUserRepository;
     private final JpaRoleRepository jpaRoleRepository;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     /**
      * login 로직을 구현한 메서드
@@ -75,7 +75,6 @@ public class UserController {
         String username = userDetails.getUsername();
 
         // 3. 사용자의 권한(Role) 정보를 추출합니다.
-        //    (참고: 현재 CustomUserDetails가 권한을 제대로 반환하지 않으므로, 이 부분은 추후 수정이 필요합니다.)
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         String role = null;
@@ -122,11 +121,13 @@ public class UserController {
     /**
      * 액세스, 리프레시 토큰 재발급 요청을 구현한 메서드
      * +)HttpServletResponse객체를 다루는 이유는 Cookie를 컨트롤 해야하기 때문
+     *
      * @return Map을 반환. -> 내부에 더 다양한 정보를 담기위해 ResponseEntity반환
      * @author 이세형
-     * */
+     *
+     */
     @PostMapping("/reissue")
-    public ResponseEntity<Map<String,String> > reissue(@CookieValue("refreshToken")String oldRefreshToken, HttpServletResponse response) {
+    public ResponseEntity<Map<String, String>> reissue(@CookieValue("refreshToken") String oldRefreshToken, HttpServletResponse response) {
         log.debug("20. 액세스(리프레시) 토큰 재발급 요청이 들어왔습니다.");
 
         // 1. 리프레시 토큰 검증
@@ -136,13 +137,13 @@ public class UserController {
         }
 
         // 2. 리프레시토큰 만료여부 확인 및 현존 쿠키 삭제
-        try{
-            if(jwtUtil.isExpired(oldRefreshToken)){
+        try {
+            if (jwtUtil.isExpired(oldRefreshToken)) {
                 log.warn("이미 만료된 리프레시 토큰 입니다.");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "이미 만료된 리프레시 토큰입니다."));
             }
-        }catch (Exception e){
-            log.warn("리프레시 토큰 검증 중 오류발생 : {}",e.getMessage());
+        } catch (Exception e) {
+            log.warn("리프레시 토큰 검증 중 오류발생 : {}", e.getMessage());
             // 쿠키를 삭제. 클라이언트의 재 로그인 유도
             Cookie cookie = new Cookie("refreshToken", null);
             cookie.setMaxAge(0);
@@ -161,7 +162,7 @@ public class UserController {
             Redis문법 SETEX 'username', {시간}, '토큰의 값' 을 넣어서
             username : 토큰의값이 들어갔기 때문에 바로 토큰 조회라고 볼 수 있는 것
         */
-        String savedRefreshToken = redisTemplate.opsForValue().get(username);
+        String savedRefreshToken = (String) redisTemplate.opsForValue().get(username);
 
         //5. Redis에 토큰이 없거나, 요청된 초큰과 일치하지 않는 경우 (보안 위협)
         if (savedRefreshToken == null || !savedRefreshToken.equals(oldRefreshToken)) {
@@ -227,4 +228,36 @@ public class UserController {
         return ResponseEntity.ok("회원가입이 성공적으로 완료되었습니다.");
     }
 
+    @GetMapping("/info")
+    public ResponseEntity<Map<String, Object>> info(Authentication authentication) {
+        log.debug("24. 내 정보 가져오기 메서드를 호출합니다(매핑이 잘 되었는지? O)");
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username = authentication.getName();
+        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+
+        Map<String, Object> userInfo = Map.of("username", username,
+                "role", authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
+        return ResponseEntity.ok(userInfo);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(Authentication authentication, HttpServletResponse response) {
+        log.debug("25. 로그아웃 메서드를 호출합니다(매핑이 잘 되었는지? O)");
+        // 1. Redis에서 Refresh Token 삭제
+        if (authentication != null) {
+            String username = authentication.getName();
+            redisTemplate.delete(username);
+            log.debug("Redis에서 사용자 '{}'의 리프레시 토큰을 삭제했습니다.", username);
+        }
+
+        // 2. 브라우저의 Refresh Token 쿠키 삭제
+        Cookie cookie = new Cookie("refreshToken", null);
+        cookie.setMaxAge(0);
+        cookie.setPath("/");
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok("success");
+    }
 }
