@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <link rel="stylesheet" href="css/loginform.css">
+</head>
+<body>
+<!-- 2025/09/04 10:36 -->
+<!-- 당장은 이 폼에 연결되지 않는다 왜..
+     실험해보니 @Configuration
+        @EnableWebSecurity
+     이 두 어노테이션이랑 관련이 있다.
+-->
+<div class="login-container">
+    <h2>로그인</h2>
+    <!-- form tag의 특징으로 action속성으로 method방식까지 선택해서 보낼 수 있다..! -->
+    <form id="loginForm">
+        <div class="input-group">
+            <label for="username">사용자 이름:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="input-group">
+            <label for="password">비밀번호:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">로그인</button>
+        <button type="button" onclick="location.href='/registerform.html'" style="margin-top: 10px;">회원가입</button>
+    </form>
+</div>
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const username = event.target.username.value;
+        const password = event.target.password.value;
+
+        try {
+            // 1. /login API에 인증 요청
+            const loginResponse = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password })
+            });
+
+            if (loginResponse.ok) {
+                const data = await loginResponse.json();
+                const token = data.token;
+                console.log("응답받아서 생성된 loginResponse객체==="+loginResponse);
+                console.log("응답받아서 생성된 토큰에 담긴 정보==="+token);
+                // 2. 토큰 저장 (localStorage는 브라우저의 특별한 저장 공간입니다)
+                localStorage.setItem('jwt', token);
+                alert('로그인 성공! 메인 페이지로 이동합니다.');
+
+                // 3. main.html 페이지로 리디렉션
+                window.location.href = '/main.html';
+
+            } else {
+                // 로그인 실패
+                alert('아이디 또는 비밀번호가 잘못되었습니다.');
+            }
+        } catch (error) {
+            // 네트워크 오류 또는 main.html 로딩 실패
+            console.error('처리 중 오류 발생:', error);
+            alert('오류가 발생했습니다: ' + error.message);
+        }
+    });
+</script>
+</body>
+</html>

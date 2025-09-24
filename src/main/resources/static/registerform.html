@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <link rel="stylesheet" href="css/registerform.css">
+</head>
+<body>
+
+<div class="register-container">
+    <h2>회원가입</h2>
+    <form action="/register" method="post" id="registerForm">
+        <div class="input-group">
+            <label for="username">사용자 이름:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="input-group">
+            <label for="password">비밀번호:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div class="input-group">
+            <label for="age">나이:</label>
+            <input type="text" id="age" name="age" required>
+        </div>
+        <div class="input-group">
+            <label for="age">역할선택:</label>
+            <select id="role" name="role" required>
+                <option value="USER" selected>사용자</option>
+                <option value="STORE">점주</option>
+                <option value="ADMIN">관리자</option>
+            </select>
+        </div>
+        <button type="submit">회원가입</button>
+    </form>
+</div>
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const age = document.getElementById('age').value;
+        const role = document.getElementById('role').value;
+
+        try {
+            const registerResponse = await fetch('/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username, password: password, age: age, role: role})
+            });
+
+            if (registerResponse.ok) {
+                const result = await registerResponse.text(); // 백엔드에서 String 반환
+                alert('회원가입이 성공적으로 완료되었습니다: ' + result);
+                window.location.href = '/loginform.html'; // 성공 시 로그인 페이지로 이동
+            } else {
+                const errorText = await registerResponse.text(); // 에러 메시지 받기
+                alert('회원가입 실패: ' + errorText);
+                console.error('회원가입 실패:', registerResponse.status, errorText);
+            }
+        } catch (error) {
+            alert('네트워크 오류 또는 서버 응답 문제: ' + error.message);
+            console.error('Fetch 오류:', error);
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+<body>
+<h2>시큐리티 메인</h2>
+
+<button id="getInfoBtn">내 정보 가져오기</button>
+<pre id="result"></pre>
+
+<hr>
+
+<form id="logoutForm">
+    <button type="submit">로그아웃</button>
+</form>
+
+<script>
+    // '내 정보 가져오기' 버튼 클릭 이벤트
+    document.getElementById('getInfoBtn').addEventListener('click', async () => {
+        // 1. localStorage에서 JWT 토큰 가져오기
+        const token = localStorage.getItem('jwt');
+
+        // 2. 토큰이 없으면 로그인 페이지로 리디렉션
+        if (!token) {
+            alert('로그인이 필요합니다.');
+            window.location.href = '/loginform.html';
+            return;
+        }
+
+        try {
+            // 3. '/info' 엔드포인트로 GET 요청 보내기 (Authorization 헤더에 토큰 포함)
+            const response = await fetch('/info', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            if (response.ok) {
+                // 4. 요청 성공 시, 결과(사용자 정보)를 화면에 표시
+                const userInfo = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(userInfo, null, 2);
+            } else if (response.status === 401) {
+                // 5. '401 Unauthorized' 에러 발생 시 (토큰 만료 등) -> 토큰 재발급 시도
+                console.log("토큰이 만료되어 AccessToken 재발급 시도를 진행합니다.")
+                try {
+                    const reissueResponse = await fetch('/reissue', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+
+                    if (reissueResponse.ok) {
+                        // 재발급 성공: 새로운 액세스 토큰을 받고, 원래 요청을 다시 시도
+                        const newToken = await reissueResponse.text();
+                        localStorage.setItem('jwt', newToken);
+
+                        const retryResponse = await fetch('/info', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': 'Bearer ' + newToken
+                            }
+                        });
+
+                        if (retryResponse.ok) {
+                            const userInfo = await retryResponse.json();
+                            document.getElementById('result').textContent = JSON.stringify(userInfo, null, 2);
+                        } else {
+                            throw new Error('정보 요청 재시도 실패');
+                        }
+                    } else {
+                        // 재발급 실패: 리프레시 토큰 만료 등
+                        throw new Error('토큰 재발급 실패');
+                    }
+                } catch (reissueError) {
+                    // 재발급 과정 또는 재시도 중 에러 발생 시 로그인 페이지로
+                    console.error('Token reissue or retry failed:', reissueError);
+                    alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+                    localStorage.removeItem('jwt');
+                    window.location.href = '/loginform.html';
+                }
+            } else {
+                // 6. 기타 에러 처리
+                alert('정보를 가져오는 데 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('오류 발생:', error);
+            alert('오류가 발생했습니다.');
+        }
+    });
+
+    // '로그아웃' 폼 제출 이벤트
+    document.getElementById('logoutForm').addEventListener('submit', async (event) => {
+        event.preventDefault(); // 폼 기본 동작 방지
+
+        // 1. localStorage에서 토큰 삭제
+        localStorage.removeItem('jwt');
+
+        // 2. 서버에 로그아웃 요청 (선택사항이지만 권장)
+        //    서버의 리프레시 토큰을 무효화하기 위함
+        try {
+            await fetch('/logout', { method: 'POST' });
+        } catch (error) {
+            console.error('로그아웃 요청 실패:', error);
+        }
+
+        // 3. 로그아웃 완료 알림 및 로그인 페이지로 리디렉션
+        alert('로그아웃되었습니다.');
+        window.location.href = '/loginform.html';
+    });
+</script>
+</body>
+</html>
