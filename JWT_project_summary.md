@@ -81,3 +81,44 @@ JWT 인프라를 Spring Security의 필터 체인에 통합하는 작업을 진�
 ## 결론
 
 위의 단계를 통해, 프로젝트는 이제 외부 요청을 `JwtFilter`로 검증하고, `/login` API를 통해 상태 없는(stateless) JWT를 발급하는 현대적인 인증 시스템을 갖추게 되었습니다.
+
+## 6단계: Refresh Token 도입 및 Redis 연동
+
+Access Token의 짧은 유효 기간으로 인한 사용자 불편을 해소하고 보안을 강화하기 위해, Refresh Token을 도입하고 이를 Redis를 통해 관리하는 시스템을 구축했습니다.
+
+### 6.1. Refresh Token의 역할
+- **목표:** Access Token이 만료되더라도 사용자가 다시 로그인할 필요 없이 새로운 Access Token을 발급받을 수 있도록 함.
+- **Access Token:** 짧은 유효 기간(예: 30분)을 가지며, 실제 API 요청 시 사용. 탈취되어도 피해 시간 최소화.
+- **Refresh Token:** 긴 유효 기간(예: 7일)을 가지며, Access Token 재발급에만 사용.
+
+### 6.2. Redis 연동 및 설정
+- **역할:** Refresh Token을 안전하게 저장하고 관리하는 중앙 저장소.
+- **구현:**
+    - `build.gradle`에 `spring-boot-starter-data-redis` 의존성을 추가.
+    - `application.properties`에 Redis 서버 접속 정보(host, port)를 설정.
+    - `RedisConfig`를 통해 `RedisTemplate`을 빈으로 등록하여 서비스 전반에서 Redis에 쉽게 접근할 수 있도록 함.
+
+### 6.3. `UserController` 로직 고도화
+- **`login` 메서드:**
+    - 인증 성공 시, Access Token과 Refresh Token을 모두 생성.
+    - Refresh Token은 **Redis**에 `key: username, value: refreshToken` 형태로 저장. (만료 시간 설정)
+    - Access Token은 응답 본문(body)에 담아 전달하고, Refresh Token은 **`HttpOnly` 쿠키**에 담아 응답.
+- **`logout` 메서드:**
+    - Redis에서 해당 사용자의 Refresh Token을 **삭제**.
+    - 클라이언트의 Refresh Token 쿠키를 만료시켜 무효화.
+- **`reissue` 메서드 (신규 추가):**
+    - 클라이언트가 Refresh Token 쿠키를 담아 `/reissue` API를 요청하면,
+    - 서버는 받은 Refresh Token이 Redis에 저장된 토큰과 일치하는지 검증.
+    - 검증 성공 시, 새로운 Access Token과 Refresh Token을 생성하여 각각 응답 본문과 쿠키로 전달.
+
+### 6.4. 클라이언트-서버 간 토큰 저장 및 관리 방식
+- **Refresh Token (재발급용):**
+    - **저장 위치:** 서버가 발급한 **`HttpOnly` 쿠키**.
+    - **특징:** JavaScript로 접근이 불가능하여 XSS 공격으로부터 안전하게 보호됨. 브라우저가 자동으로 요청에 포함시켜 전송.
+- **Access Token (API 요청용):**
+    - **저장 위치:** 클라이언트 측 **`localStorage`** 또는 `sessionStorage`.
+    - **특징:** 클라이언트의 JavaScript 코드가 API를 호출할 때마다 `localStorage`에서 토큰을 읽어 `Authorization: Bearer <token>` 헤더에 포함시켜야 함.
+
+## 최종 아키텍처 요약
+
+이로써 프로젝트는 Access Token과 Refresh Token을 사용하는 이중 토큰 구조를 완성했습니다. `JwtFilter`가 Access Token을 검증하여 API 접근을 제어하고, `UserController`는 Redis와 연동하여 Refresh Token을 안전하게 관리함으로써, 보안과 사용자 편의성을 모두 만족시키는 현대적인 인증 시스템을 구축했습니다.

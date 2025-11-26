@@ -138,7 +138,7 @@ public class UserController {
 
         // 2. 리프레시토큰 만료여부 확인 및 현존 쿠키 삭제
         try {
-            if (jwtUtil.isExpired(oldRefreshToken)) {
+            if (jwtUtil.isTokenExpired(oldRefreshToken)) {
                 log.warn("이미 만료된 리프레시 토큰 입니다.");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "이미 만료된 리프레시 토큰입니다."));
             }

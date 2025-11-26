@@ -43,7 +43,7 @@ public class JwtFilter extends OncePerRequestFilter {
         log.debug("11. 'Bearer '를 제거하고 순수하게 추출한 토큰 값은====="+token);
 
         // 4. 토큰이 만료되었는지 확인하고, 만료되었다면 인증을 진행하지 않습니다.
-        if (jwtUtil.isExpired(token)) {
+        if (jwtUtil.isTokenExpired(token)) {
             filterChain.doFilter(request, response);
             return;
         }

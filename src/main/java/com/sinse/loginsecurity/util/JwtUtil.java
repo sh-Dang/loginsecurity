@@ -1,50 +1,63 @@
 package com.sinse.loginsecurity.util;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import lombok.extern.slf4j.Slf4j;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import io.jsonwebtoken.security.Keys;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
-@Slf4j
 public class JwtUtil {
 
-    private SecretKey secretKey;
+    // Ideally, this should be loaded from application.properties
+    // @Value("${jwt.secret}")
+    private static final String SECRET_KEY_STRING = "thisIsMySuperSecretKeyForJWTAuthenticationAndItShouldBeLongEnough"; // 최소 256비트 (32바이트)
+    private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor(SECRET_KEY_STRING.getBytes(StandardCharsets.UTF_8));
 
-    public JwtUtil(@Value("${spring.jwt.secret}") String secret) {
-        // 더 안전하고 표준적인 방법으로 SecretKey를 생성합니다.
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-    }
+    // Token expiration times (milliseconds)
+    public static final long ACCESS_TOKEN_EXPIRE_TIME = 1000 * 60 * 30; // 30 minutes
+    public static final long REFRESH_TOKEN_EXPIRE_TIME = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-    // 토큰에서 username을 추출하는 메서드 JwtFilter에서 검증로직을 통해 검증할 것임
-    public String getUsername(String token) {
-        log.debug("19. 받은 accessToken을 검증중 입니다. 지금 줄에서는 userName을 꺼내어 검증 하는중입니다.");
-        return Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody().get("username", String.class);
-    }
+    // JWT 생성
+    public String createJwt(String username, String role, Long expireTime) {
+        Claims claims = Jwts.claims();
+        claims.put("username", username);
+        claims.put("role", role);
 
-    // 토큰에서 role을 추출하는 메서드 JwtFilter에서 검증로직을 통해 검증할 것임
-    public String getRole(String token) {
-        return Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody().get("role", String.class);
-    }
-
-    // 토큰이 만료되었는지 확인하는 메서드
-    public Boolean isExpired(String token) {
-        return Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody().getExpiration().before(new Date());
-    }
-
-    // JWT를 생성하는 메서드
-    public String createJwt(String username, String role, Long expiredMs) {
         return Jwts.builder()
-                .claim("username", username)
-                .claim("role", role)
+                .setClaims(claims)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiredMs))
-                .signWith(secretKey)
+                .setExpiration(new Date(System.currentTimeMillis() + expireTime))
+                .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    // JWT에서 Claims 추출
+    public Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(SECRET_KEY)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    // 토큰 만료 여부 확인
+    public Boolean isTokenExpired(String token) {
+        return extractAllClaims(token).getExpiration().before(new Date());
+    }
+
+    // JWT에서 사용자 이름 추출
+    public String getUsername(String token) {
+        return extractAllClaims(token).get("username", String.class);
+    }
+
+    // JWT에서 사용자 역할(Role) 추출
+    public String getRole(String token) {
+        return extractAllClaims(token).get("role", String.class);
     }
 }
