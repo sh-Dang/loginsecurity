@@ -23,10 +23,10 @@ public class JwtUtil {
     public static final long ACCESS_TOKEN_EXPIRE_TIME = 1000 * 60 * 30; // 30 minutes
     public static final long REFRESH_TOKEN_EXPIRE_TIME = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-    // JWT 생성
-    public String createJwt(String username, String role, Long expireTime) {
+    // JWT 생성 (userId를 사용하도록 변경)
+    public String createJwt(Long userId, String role, Long expireTime) { // Changed username to userId (Long)
         Claims claims = Jwts.claims();
-        claims.put("username", username);
+        claims.put("userId", userId); // Store userId in claims
         claims.put("role", role);
 
         return Jwts.builder()
@@ -51,9 +51,9 @@ public class JwtUtil {
         return extractAllClaims(token).getExpiration().before(new Date());
     }
 
-    // JWT에서 사용자 이름 추출
-    public String getUsername(String token) {
-        return extractAllClaims(token).get("username", String.class);
+    // JWT에서 사용자 ID 추출
+    public Long getUserId(String token) {
+        return extractAllClaims(token).get("userId", Long.class);
     }
 
     // JWT에서 사용자 역할(Role) 추출

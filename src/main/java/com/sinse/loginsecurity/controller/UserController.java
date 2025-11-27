@@ -72,7 +72,8 @@ public class UserController {
         // 2. 인증에 성공하면, 인증된 사용자의 상세 정보를 가져옵니다.
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         log.debug("5. getPrincipal()로 가져와 담아낸 userDetails 정보는" + userDetails);
-        String username = userDetails.getUsername();
+        Long userId = userDetails.getUserId(); // Get userId
+        String username = userDetails.getUsername(); // Keep username for logging or other needs if necessary
 
         // 3. 사용자의 권한(Role) 정보를 추출합니다.
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
@@ -85,11 +86,11 @@ public class UserController {
         log.debug("6.로그인 정보가 담긴 UserDetails객체에서 추출해낸 role은" + role);
 
         // 4. JwtUtil을 사용하여 JWT(accessToken)를 생성합니다. (유효시간 : 15분)
-        String accessToken = jwtUtil.createJwt(username, role, 1 * 15 * 1000L);
+        String accessToken = jwtUtil.createJwt(userId, role, 1 * 15 * 1000L);
         log.debug("7. 로그인 정보를 사용(JwtUtil객체를 통해)해 만든 accessToken 문자열은 == " + accessToken + "\n이 토큰을 client에게 반환합니다.");
 
         // 4.1. JWTUtil을 사용하여 RefreshToken을 생성합니다. (유효시간 : 24시간)
-        String refreshToken = jwtUtil.createJwt(username, role, 24 * 60 * 60 * 1000L);
+        String refreshToken = jwtUtil.createJwt(userId, role, 24 * 60 * 60 * 1000L);
         log.debug("17. 로그인 정보를 사용해 만든 refreshToken 문자열은 === " + refreshToken + "\n이 문자열은 반영구 쿠키에 저장됩니다.");
 
         // 4.1.1 쿠키 생성 및 설정
@@ -106,13 +107,13 @@ public class UserController {
 
         //4.2 Redis에 Refresh Token 저장(유효시간 : 24시간)
         redisTemplate.opsForValue().set(
-                username,
+                String.valueOf(userId), // Change key to userId
                 refreshToken,
                 24, // 만료시간
                 java.util.concurrent.TimeUnit.HOURS // 시간단위
         );
         // logger문법도 하나 더 배웠음
-        log.debug("Redis에 RefreshToken을 저장했습니다. Key: {}, TTL: 24시간", username);
+        log.debug("Redis에 RefreshToken을 저장했습니다. Key: {}, TTL: 24시간", String.valueOf(userId));
 
         // 5. 생성된 토큰을 "token"이라는 키와 함께 JSON 형태로 클라이언트에게 반환합니다.
         return ResponseEntity.ok(Map.of("token", accessToken));
@@ -153,18 +154,23 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "유효하지 않은 토큰"));
         }
 
-        // 3. 토큰에서 username과 role 추출
-        String username = jwtUtil.getUsername(oldRefreshToken);
+        // 3. 토큰에서 userId와 role 추출
+        Long userId = jwtUtil.getUserId(oldRefreshToken); // userId 추출
         String role = jwtUtil.getRole(oldRefreshToken);
-        log.debug("22. 리프레시 토큰에서 추출해온 값이 어떻게 들어왔냐면 username === {}, role === {}", username, role);
+        log.debug("22. 리프레시 토큰에서 추출해온 값이 어떻게 들어왔냐면 userId === {}, role === {}", userId, role);
+
+        // 3.1. DB에서 사용자 정보 조회 (최신 role 및 username을 얻기 위함)
+        User user = jpaUserRepository.findById(Math.toIntExact(userId)) // int userId로 가정
+                .orElseThrow(() -> new IllegalArgumentException("User not found for ID: " + userId));
+        String username = user.getUsername(); // Redis Key 변경시 username이 필요할 경우를 대비
 
         /* 4. Redis에서 저장된 리프레시 토큰 조회
             Redis문법 SETEX 'username', {시간}, '토큰의 값' 을 넣어서
             username : 토큰의값이 들어갔기 때문에 바로 토큰 조회라고 볼 수 있는 것
         */
-        String savedRefreshToken = (String) redisTemplate.opsForValue().get(username);
+        String savedRefreshToken = (String) redisTemplate.opsForValue().get(String.valueOf(userId)); // userId로 Redis 조회
 
-        //5. Redis에 토큰이 없거나, 요청된 초큰과 일치하지 않는 경우 (보안 위협)
+        //5. Redis에 토큰이 없거나, 요청된 토큰과 일치하지 않는 경우 (보안 위협)
         if (savedRefreshToken == null || !savedRefreshToken.equals(oldRefreshToken)) {
             log.warn("Redis에 저장된 토큰과 가진 토큰이 일치하지 않습니다.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "리프레시 토큰 정보가 유효하지 않습니다."));
@@ -174,14 +180,14 @@ public class UserController {
         log.debug("23. 토큰들이 모두 유효합니다. 새로운 토큰들 발급 프로세스에 진입합니다.");
 
         // 5.1.1 새로운 액세스토큰 생성
-        String newAccessToken = jwtUtil.createJwt(username, role, 15 * 60 * 1000L);
+        String newAccessToken = jwtUtil.createJwt(userId, role, 15 * 60 * 1000L); // userId로 토큰 생성
 
         // 5.1.2 새로운 리프레시 토큰 생성
-        String newRefreshToken = jwtUtil.createJwt(username, role, 24 * 60 * 60 * 1000L);
+        String newRefreshToken = jwtUtil.createJwt(userId, role, 24 * 60 * 60 * 1000L); // userId로 토큰 생성
 
         // 5.2 새로운 리프레시 토큰을 Redis, Cookie에 업데이트
         //Redis
-        redisTemplate.opsForValue().set(username, newRefreshToken, 24, java.util.concurrent.TimeUnit.HOURS);
+        redisTemplate.opsForValue().set(String.valueOf(userId), newRefreshToken, 24, java.util.concurrent.TimeUnit.HOURS); // userId로 Redis 저장
         //Cookie
         Cookie cookie = new Cookie("refreshToken", newRefreshToken);
         cookie.setMaxAge(24 * 60 * 60);
@@ -231,14 +237,27 @@ public class UserController {
     @GetMapping("/info")
     public ResponseEntity<Map<String, Object>> info(Authentication authentication) {
         log.debug("24. 내 정보 가져오기 메서드를 호출합니다(매핑이 잘 되었는지? O)");
-        if (authentication == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        String username = authentication.getName();
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
 
-        Map<String, Object> userInfo = Map.of("username", username,
-                "role", authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Long userId = userDetails.getUserId();
+
+        // userId를 사용하여 DB에서 사용자 정보를 다시 조회
+        User user = jpaUserRepository.findById(Math.toIntExact(userId)) // userId는 Long, findById는 int를 가정
+                .orElseThrow(() -> new IllegalStateException("인증된 사용자를 찾을 수 없습니다. userId: " + userId));
+
+        // 사용자 정보 추출
+        String username = user.getUsername();
+        int age = user.getAge();
+        String role = user.getRole().getRoleName();
+
+        Map<String, Object> userInfo = Map.of(
+                "username", username,
+                "role", role,
+                "age", age
+        );
         return ResponseEntity.ok(userInfo);
     }
 
@@ -246,10 +265,11 @@ public class UserController {
     public ResponseEntity<String> logout(Authentication authentication, HttpServletResponse response) {
         log.debug("25. 로그아웃 메서드를 호출합니다(매핑이 잘 되었는지? O)");
         // 1. Redis에서 Refresh Token 삭제
-        if (authentication != null) {
-            String username = authentication.getName();
-            redisTemplate.delete(username);
-            log.debug("Redis에서 사용자 '{}'의 리프레시 토큰을 삭제했습니다.", username);
+        if (authentication != null && (authentication.getPrincipal() instanceof CustomUserDetails)) {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            Long userId = userDetails.getUserId(); // userId 사용
+            redisTemplate.delete(String.valueOf(userId)); // userId를 String으로 변환하여 사용
+            log.debug("Redis에서 사용자 '{}'의 리프레시 토큰을 삭제했습니다.", userId);
         }
 
         // 2. 브라우저의 Refresh Token 쿠키 삭제

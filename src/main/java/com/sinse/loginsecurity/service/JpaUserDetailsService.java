@@ -32,4 +32,12 @@ public class JpaUserDetailsService implements UserDetailsService {
         // DB에서 찾은 user 객체를 CustomUserDetails로 감싸서 반환합니다.
         return new CustomUserDetails(user);
     }
+
+    public UserDetails loadUserById(Long userId) throws UsernameNotFoundException {
+        User user = jpaUserRepository.findById(Math.toIntExact(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
+
+        log.debug("userId로 꺼내온 유저 객체에 담긴 정보는 " + user.toString());
+        return new CustomUserDetails(user);
+    }
 }

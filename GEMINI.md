@@ -17,6 +17,7 @@ My first session login/logout project is done, please help me to convert to JWT 
 
 **Guidance Style:**
 - Periodically check the user's level and adjust the guide's depth.
+- 모든 설명, 주석, 가이드는 한국어로 제공해주세요.
 
 **Future Learning Topics:**
 - Implement a custom `/login` mapping for educational purposes after the main project is complete.

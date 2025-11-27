@@ -48,12 +48,12 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 5. 토큰에서 username을 추출합니다.
-        String username = jwtUtil.getUsername(token);
+        // 5. 토큰에서 userId를 추출합니다.
+        Long userId = jwtUtil.getUserId(token);
 
-        // 6. username으로 UserDetails 객체(사용자 정보)를 조회합니다.
-        UserDetails userDetails = jpaUserDetailsService.loadUserByUsername(username);
-        log.debug("16. userDetails를 DB에서 잘 꺼내왔습니다. 이 로그는 한번만 출력되어야 합니다.");
+        // 6. userId로 UserDetails 객체(사용자 정보)를 조회합니다.
+        UserDetails userDetails = jpaUserDetailsService.loadUserById(userId);
+        log.debug("16. userDetails를 DB에서 userId {} 로 잘 꺼내왔습니다.", userId);
 
         // 7. Spring Security가 이해할 수 있는 인증 토큰(Authentication)을 생성합니다.
         UsernamePasswordAuthenticationToken authToken = new
